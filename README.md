@@ -38,6 +38,6 @@ notebooks/
 ## Status
 - [x] Data collection
 - [x] Data cleaning and merging
-- [ ] Modelling
-- [ ] Dashboard
+- [x] Modelling
+- [x] Dashboard
 - [ ] Dissertation

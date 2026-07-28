@@ -1,0 +1,32 @@
+[client]
+# The app has no sidebar content anywhere (all filters live in the page
+# body; navigation is the custom top navbar in lib/components.py). Without
+# this, Streamlit still server-renders the sidebar container and its
+# auto-generated multipage nav list on every page before any of our own
+# script code runs — which is what caused the visible flash on
+# Player Explorer and Bias Explorer (their slower initial render, from the
+# SHAP waterfall/matplotlib and Plotly charts, made the flash more visible
+# than on the lighter pages). Disabling it here stops Streamlit from ever
+# constructing that sidebar nav server-side, instead of hiding it with CSS
+# after the fact.
+showSidebarNavigation = false
+
+# Removes the "Deploy" button and its surrounding controls from the fixed
+# toolbar. Note: the native header (including the "⋮" settings menu this
+# comment used to reference) is now hidden entirely via
+# [data-testid="stHeader"] { display: none; } in lib/components.py's custom
+# top bar, so the "⋮" menu and its theme toggle no longer exist regardless
+# of this setting — the header is replaced, not shown-with-fewer-buttons.
+# toolbarMode is left at "viewer" rather than "minimal" only because it's
+# otherwise harmless; it has no visible effect now that the whole header
+# is hidden by CSS.
+toolbarMode = "viewer"
+
+[theme]
+base = "dark"
+
+backgroundColor = "#242629"
+secondaryBackgroundColor = "#303338"
+
+textColor = "#F2F2F2"
+primaryColor = "#FF4B4B"
