@@ -4,6 +4,7 @@ import streamlit as st
 from lib import config
 from lib.components import balance_section_spacing, render_header, stat_card
 from lib.data_loader import (
+    add_occurrence_index,
     load_bias_summary_confederation,
     load_bias_summary_league,
     load_per_player_bias,
@@ -11,7 +12,10 @@ from lib.data_loader import (
 )
 
 st.set_page_config(
-    page_title="Bias Explorer", page_icon="⚖️", layout="wide", initial_sidebar_state="collapsed"
+    page_title="Bias Explorer",
+    page_icon=config.PAGE_ICONS["Bias Explorer"],
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 render_header(active="Bias Explorer")
 balance_section_spacing()
@@ -96,13 +100,14 @@ def render_bias_chart(df, category_col, category_label_col, key):
     fig.update_layout(
         xaxis_title="Mean SHAP Contribution (log-space)",
         yaxis_title="",
+        legend_title_text="Position",
         margin=dict(l=0, r=0, t=10, b=0),
         # Capped as well as floored — with "All" positions grouping 4 bars
         # per category, this scaled unbounded for large category counts;
         # readability doesn't need more than ~450px even then.
         height=min(450, max(280, 45 * df[category_label_col].nunique())),
     )
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    st.plotly_chart(fig, width="stretch", key=key)
 
 
 # --- League Bias ---------------------------------------------------------
@@ -157,15 +162,15 @@ st.divider()
 # --- Individual Player Breakdown ------------------------------------------
 st.header("Individual Player Breakdown")
 
-per_player_bias = load_per_player_bias().copy()
-players = load_predictions_with_profile().copy()
+per_player_bias = load_per_player_bias()
+players = load_predictions_with_profile()
 
 # Around 100 rows share a (Player, position) pair (players transferred
 # mid-season, e.g. Kyle Walker DEF at both Manchester City and Milan).
 # Neither file has a shared player ID, so pair each duplicate's occurrence
 # order within its own file — same approach as load_predictions_with_profile.
-per_player_bias["_occurrence"] = per_player_bias.groupby(["Player", "position"]).cumcount()
-players["_occurrence"] = players.groupby(["Player", "position"]).cumcount()
+per_player_bias = add_occurrence_index(per_player_bias, ["Player", "position"])
+players = add_occurrence_index(players, ["Player", "position"])
 
 player_pool = per_player_bias.merge(
     players[["Player", "position", "Squad", "_occurrence"]],
@@ -176,7 +181,16 @@ player_pool["_label"] = (
     player_pool["Player"] + " — " + player_pool["Squad"].fillna("Unknown Club") + " (" + player_pool["position"] + ")"
 )
 
-selected_label = st.selectbox("Search player (name or club)", player_pool["_label"].tolist())
+selected_label = st.selectbox(
+    "Search player (name or club)",
+    player_pool["_label"].tolist(),
+    index=None,
+    placeholder="Start typing a player name or club...",
+)
+if not selected_label:
+    st.caption("Search for a player above to get started.")
+    st.stop()
+
 player_row = player_pool[player_pool["_label"] == selected_label].iloc[0]
 
 breakdown_cols = st.columns(4)
@@ -189,7 +203,12 @@ with breakdown_cols[1]:
         help_text=config.SHAP_EUR_CAVEAT,
     )
 with breakdown_cols[2]:
-    stat_card("Confederation Contribution (log-space)", f"{player_row['confed_shap_log']:.3f}")
+    # Confederation contributions are an order of magnitude smaller than
+    # league ones (see the Insight box below) — many genuinely nonzero
+    # values (e.g. 0.00027) round to "0.000" at 3dp and read as no effect
+    # at all. One extra decimal place keeps them visible without changing
+    # the euro figure, which was already computed from the unrounded value.
+    stat_card("Confederation Contribution (log-space)", f"{player_row['confed_shap_log']:.4f}")
 with breakdown_cols[3]:
     stat_card(
         "Confederation Contribution (€)",

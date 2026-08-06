@@ -6,3 +6,5 @@ __pycache__/
 .ipynb_checkpoints/
 .env
 notebooks/downloaded_files/
+.claude/
+private_notes/

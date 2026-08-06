@@ -7,7 +7,10 @@ from lib.components import balance_section_spacing, difference_style, render_hea
 from lib.data_loader import load_predictions_with_profile
 
 st.set_page_config(
-    page_title="Value Finder", page_icon="🔍", layout="wide", initial_sidebar_state="collapsed"
+    page_title="Value Finder",
+    page_icon=config.PAGE_ICONS["Value Finder"],
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 render_header(active="Value Finder")
 balance_section_spacing()
@@ -37,7 +40,8 @@ st.markdown(
 
 st.title("Value Finder")
 st.write(
-    "Compare each player's actual 2024–25 market value against the "
+    "Compare each player's actual market value — their Transfermarkt valuation "
+    "at the end of the 2024–25 season — against the "
     f"{config.MODEL_ESTIMATED_VALUE_LABEL.lower()} derived from their observed "
     "performance. Select a player to open their full profile in Player Explorer."
 )
@@ -101,7 +105,7 @@ with st.container(border=True, key="vf-filters-panel"):
         # as the sliders rather than on its own line. st.slider's own label
         # sits above the track, so a leading spacer of the same height lines
         # the checkbox up with the sliders' tracks instead of their labels.
-        st.markdown("<div style='height: 1.8rem'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 2.75rem'></div>", unsafe_allow_html=True)
         show_undervalued_only = st.checkbox("Show undervalued players only", value=False)
 
 with st.container(key="vf-filters-results-divider"):
@@ -129,6 +133,12 @@ filtered = filtered.sort_values("value_ratio", ascending=False).reset_index(drop
 st.caption(
     f"{len(filtered):,} of {len(players):,} players match the current filters. "
     "Undervalued players are highlighted in green."
+)
+st.caption(
+    "Undervalued status is determined using cross-validated predictions to avoid "
+    "optimistic bias — a different, held-out basis from the Model Estimated Value "
+    "and Value Ratio shown in the table above, which use the final model fit on "
+    "all data."
 )
 
 if filtered.empty:
@@ -165,7 +175,7 @@ styled_df = (
 event = st.dataframe(
     styled_df,
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
     on_select="rerun",
     selection_mode="single-row",
     column_config={
