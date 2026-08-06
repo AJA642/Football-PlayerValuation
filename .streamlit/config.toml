@@ -25,8 +25,14 @@ toolbarMode = "viewer"
 [theme]
 base = "dark"
 
-backgroundColor = "#242629"
-secondaryBackgroundColor = "#303338"
+# Design system: "premium research dashboard" — predominantly black/charcoal/
+# white, with a single restrained accent (neon-orange) reserved for
+# hierarchy/interaction (active nav, links, focus states, KPI numbers).
+# These 4 theme keys cascade into every Streamlit-native widget (tabs,
+# segmented controls, dataframe row-selection, focus rings, sliders) without
+# per-widget CSS, so most of that consistency is free once set here.
+backgroundColor = "#0B0B0B"
+secondaryBackgroundColor = "#171717"
 
-textColor = "#F2F2F2"
-primaryColor = "#FF4B4B"
+textColor = "#FFFFFF"
+primaryColor = "#FF7A00"

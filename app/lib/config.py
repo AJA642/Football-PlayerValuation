@@ -22,6 +22,7 @@ BIAS_SUMMARY_LEAGUE_CSV = DASHBOARD_DIR / "bias_summary_league.csv"
 BIAS_SUMMARY_CONFEDERATION_CSV = DASHBOARD_DIR / "bias_summary_confederation.csv"
 PER_PLAYER_BIAS_CSV = DASHBOARD_DIR / "per_player_bias.csv"
 DIAGNOSTICS_SUMMARY_CSV = DASHBOARD_DIR / "diagnostics_summary.csv"
+COMPARABLE_PLAYERS_CSV = DASHBOARD_DIR / "comparable_players.csv"
 
 PLAYER_VALUATIONS_CSV = DATA_RAW / "transfermarkt" / "player_valuations.csv"
 # The models are trained on 2024-25 season data only. player_valuations.csv
@@ -326,6 +327,21 @@ def diagnostics_png_path(position: str) -> Path:
     return FIGURES_DIR / f"diagnostics_{POSITION_FILE_SUFFIX[position]}.png"
 
 
+# The three diagnostic panels (Predicted vs Actual, Residuals vs Predicted,
+# Residual Distribution) notebook 3 now saves individually rather than as
+# one combined 1x3 image, so they can be shown stacked vertically in the
+# dashboard's own Diagnostics panel rather than as a single wide strip.
+DIAGNOSTIC_PANELS = [
+    ("pred_vs_actual", "Predicted vs Actual"),
+    ("residuals_vs_predicted", "Residuals vs Predicted"),
+    ("residual_dist", "Residual Distribution"),
+]
+
+
+def diagnostic_panel_png_path(position: str, panel: str) -> Path:
+    return FIGURES_DIR / f"diagnostics_{POSITION_FILE_SUFFIX[position]}_{panel}.png"
+
+
 def shap_summary_png_path(position: str) -> Path:
     return DATA_PROCESSED / f"shap_summary_{POSITION_FILE_SUFFIX[position]}.png"
 
@@ -416,6 +432,132 @@ POSITION_STAT_GROUPS = {
         ),
     ],
 }
+
+# Player Explorer's Comparable Players detail panel — a fixed, curated
+# subset per position (not the full POSITION_STAT_GROUPS list above),
+# chosen to fit a compact two-player comparison table rather than the full
+# Performance Statistics card. Same raw field names/format types as
+# POSITION_STAT_GROUPS (full_record is the shared data source for both);
+# the fourth tuple element flags the one stat where a *smaller* value is
+# the better outcome (goals conceded per 90), so the comparison panel's
+# bold-the-better-value highlighting points the right way.
+COMPARABLE_STAT_FIELDS = {
+    "FWD": [
+        ("Gls", "Goals", "count", False),
+        ("Ast", "Assists", "count", False),
+        ("xG", "xG", "decimal", False),
+        ("xAG", "xAG", "decimal", False),
+        ("Sh_shooting", "Shots", "count", False),
+    ],
+    "MID": [
+        ("Ast", "Assists", "count", False),
+        ("PrgP", "Progressive Passes", "count", False),
+        ("PrgC", "Progressive Carries", "count", False),
+        ("xAG", "xAG", "decimal", False),
+        ("Tkl+Int", "Tackles + Interceptions", "count", False),
+    ],
+    "DEF": [
+        ("Tkl+Int", "Tackles + Interceptions", "count", False),
+        ("Clr", "Clearances", "count", False),
+        ("Won%", "Aerial Duels Won %", "percent", False),
+        ("PrgP", "Progressive Passes", "count", False),
+    ],
+    "GK": [
+        ("Save%", "Save %", "percent", False),
+        ("GA90", "Goals Against per 90", "decimal", True),
+        ("CS%", "Clean Sheet %", "percent", False),
+    ],
+}
+
+# Player Explorer's "All Statistics" view — a single, position-agnostic set
+# of categories (unlike POSITION_STAT_GROUPS above, which is deliberately
+# scoped per-position to match each trained model's own feature set). Pulls
+# directly from merged_dataset_2425's raw FBref column names (not the
+# sanitised names POSITION_STAT_GROUPS/FEATURE_LABELS use, since those only
+# exist post-model-preprocessing) — every column here is confirmed present
+# and genuinely populated for outfield players (verified: e.g. forwards
+# have real non-null Tkl/Int/Recov values, defenders have real non-null
+# xG/Sh_shooting values), so no position filtering is needed at the group
+# level. Goalkeeping stats are the one category that's 100% null for every
+# outfield player (keeper-table columns are only populated for keepers) —
+# the page hides a category entirely once every field in it is null for
+# the selected player, which naturally drops Goalkeeping for outfielders
+# without needing an explicit position check here.
+ALL_STATS_GROUPS = [
+    (
+        "Attacking",
+        [
+            ("Gls", "Goals", "count"),
+            ("Ast", "Assists", "count"),
+            ("G+A", "Goals + Assists", "count"),
+            ("xG", "Expected Goals (xG)", "decimal"),
+            ("npxG", "Non-Penalty xG", "decimal"),
+            ("Sh_shooting", "Shots", "count"),
+            ("SoT", "Shots on Target", "count"),
+            ("SoT%", "Shot Accuracy", "percent"),
+            ("PK", "Penalty Goals", "count"),
+        ],
+    ),
+    (
+        "Creativity & Passing",
+        [
+            ("xAG", "Expected Assisted Goals (xAG)", "decimal"),
+            ("xA", "Expected Assists (xA)", "decimal"),
+            ("KP", "Key Passes", "count"),
+            ("PrgP", "Progressive Passes", "count"),
+            ("Cmp%_passing", "Pass Completion", "percent"),
+            ("SCA", "Shot-Creating Actions", "count"),
+            ("GCA", "Goal-Creating Actions", "count"),
+            ("CrsPA", "Crosses into Penalty Area", "count"),
+            ("Crs", "Crosses", "count"),
+        ],
+    ),
+    (
+        "Possession & Progression",
+        [
+            ("Touches", "Touches", "count"),
+            ("PrgC", "Progressive Carries", "count"),
+            ("Carries", "Carries", "count"),
+            ("Succ%", "Take-On Success", "percent"),
+            ("CPA", "Carries into Penalty Area", "count"),
+            ("Rec", "Passes Received", "count"),
+        ],
+    ),
+    (
+        "Defensive Actions",
+        [
+            ("Tkl", "Tackles", "count"),
+            ("TklW", "Tackles Won", "count"),
+            ("Int", "Interceptions", "count"),
+            ("Tkl+Int", "Tackles + Interceptions", "count"),
+            ("Clr", "Clearances", "count"),
+            ("Blocks_defense", "Blocks", "count"),
+            ("Won%", "Aerial Duels Won", "percent"),
+            ("Recov", "Ball Recoveries", "count"),
+        ],
+    ),
+    (
+        "Discipline",
+        [
+            ("CrdY", "Yellow Cards", "count"),
+            ("CrdR", "Red Cards", "count"),
+            ("Fls", "Fouls Committed", "count"),
+            ("Fld_misc", "Fouls Drawn", "count"),
+            ("Off_misc", "Offsides", "count"),
+        ],
+    ),
+    (
+        "Goalkeeping",
+        [
+            ("Saves", "Saves", "count"),
+            ("Save%", "Save Percentage", "percent"),
+            ("CS", "Clean Sheets", "count"),
+            ("CS%", "Clean Sheet Percentage", "percent"),
+            ("GA90", "Goals Against per 90", "decimal"),
+            ("PSxG+/-", "Post-Shot xG +/-", "decimal"),
+        ],
+    ),
+]
 
 # Human-readable labels for the raw, sanitised feature names used by the
 # trained models and SHAP artefacts (e.g. "SoT%" -> "SoT_", "PSxG+/-" -> "PSxG_"
@@ -643,7 +785,7 @@ def friendly_feature_label(raw_name: str) -> str:
 DASHBOARD_TITLE = "⚽"
 DASHBOARD_SUBTITLE = "Football Player Valuation Dashboard"
 
-HOME_PAGE = {"path": "Home.py", "label": "Home", "icon": "🏠"}
+HOME_PAGE = {"path": "Home.py", "label": "Home"}
 
 PAGES = [
     {
@@ -673,3 +815,7 @@ PAGES = [
 ]
 
 NAV_ITEMS = [HOME_PAGE] + PAGES
+
+# Derived from PAGES so each page's st.set_page_config(page_icon=...) call
+# can reference the same icon instead of duplicating the emoji literal.
+PAGE_ICONS = {page["label"]: page["icon"] for page in PAGES}

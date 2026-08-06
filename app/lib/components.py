@@ -83,6 +83,93 @@ def render_header(active: str):
     st.markdown(
         f"""
         <style>
+        /* --- Design system tokens ------------------------------------
+        Single source of truth for the "premium/restrained, orange-accent"
+        identity, defined once here (render_header runs on every page) so
+        every page inherits it instead of redefining colours locally.
+        var(--app-text-muted, ...) / var(--app-border, ...) were already
+        used as CSS custom properties with inline rgba fallbacks across
+        Home.py and Player_Explorer.py *before* this redesign, but the
+        properties themselves were never actually defined anywhere — every
+        one of those usages was silently falling back to its inline rgba
+        default. Defining them here retargets all of those existing call
+        sites app-wide without editing each page. */
+        :root {{
+            --app-bg: #0B0B0B;
+            --app-card-bg: #171717;
+            --app-border: #2A2A2A;
+            --app-border-hover: #3D3D3D;
+            --app-text: #FFFFFF;
+            --app-text-muted: #A3A3A3;
+            --app-accent: #FF7A00;
+            --app-accent-hover: #FF8C1A;
+            --app-accent-subtle: rgba(255, 122, 0, 0.12);
+        }}
+
+        /* Every bordered st.container() across all 5 pages, reached via
+        the "st-key-" prefixes already established for each one (stat
+        cards, nav cards, workflow cards, Player Explorer's Profile/
+        Valuation/Statistics cards, Model Performance's Diagnostics/SHAP
+        panels, Value Finder's Filters panel) — one shared card treatment
+        instead of restyling each page's cards independently. Hover is
+        intentionally a neutral brighter border + slight lift, not an
+        orange border: orange is reserved for genuinely interactive
+        elements (links, active states), not every static info card. */
+        [class*="st-key-stat-card-"],
+        [class*="st-key-profile-summary-card"],
+        [class*="st-key-valuation-summary-card"],
+        [class*="st-key-perf-stats-col"],
+        [class*="st-key-diag-panel-"],
+        [class*="st-key-shap-panel-"],
+        [class*="st-key-vf-filters-panel"] {{
+            background-color: var(--app-card-bg) !important;
+            border-color: var(--app-border) !important;
+            border-radius: 10px !important;
+            transition: transform 180ms ease, border-color 180ms ease;
+        }}
+        [class*="st-key-stat-card-"]:hover,
+        [class*="st-key-profile-summary-card"]:hover,
+        [class*="st-key-valuation-summary-card"]:hover,
+        [class*="st-key-perf-stats-col"]:hover,
+        [class*="st-key-diag-panel-"]:hover,
+        [class*="st-key-shap-panel-"]:hover,
+        [class*="st-key-vf-filters-panel"]:hover {{
+            border-color: var(--app-border-hover) !important;
+            transform: translateY(-2px);
+        }}
+
+        /* st.metric's big value is the "KPI number" everywhere it's used
+        (Home's KPI row, Value Finder's/Bias Explorer's breakdown cards) —
+        one rule makes every KPI number orange app-wide, per the design
+        brief's explicit "KPI numbers" accent guidance, without touching
+        each page. The label above it is untouched (stays white/muted),
+        so only the number itself carries the accent. */
+        [data-testid="stMetricValue"] {{
+            color: var(--app-accent) !important;
+        }}
+
+        /* Default alert treatment (st.info/st.warning) — Streamlit's own
+        colours (a saturated blue/yellow) are the last surviving non-
+        monochrome, non-accent colour on the dashboard otherwise: Value
+        Finder's "no players match" message, Bias Explorer's Insight box,
+        Player Explorer's "no valuation data"/"select a comparable player"
+        messages all use st.info() for genuinely neutral messaging, not a
+        highlighted callout, so they get the same restrained charcoal-card
+        treatment as everything else rather than their own colour. Home's
+        Key Finding banner is the one deliberate exception — it has its
+        own more specific `.st-key-home-key-finding` rules (same
+        !important tier, higher specificity) that win over this default. */
+        [data-testid="stAlertContainer"] {{
+            background-color: var(--app-card-bg) !important;
+            border: 1px solid var(--app-border) !important;
+        }}
+        [data-testid="stAlertContainer"] svg {{
+            fill: var(--app-text-muted) !important;
+        }}
+        [data-testid="stAlertContainer"] [data-testid="stMarkdownContainer"] p {{
+            color: var(--app-text) !important;
+        }}
+
         /* Streamlit's native header (the "⋮" settings menu, Deploy button,
         theme toggle, etc.) is replaced outright by the custom top bar below
         rather than living alongside it — hidden completely, not just
@@ -137,14 +224,13 @@ def render_header(active: str):
             gap: 12px !important;
         }}
 
-        /* Bordered "card" containers — stat_card() and colored_metric() —
-        keyed per-instance (`st-key-stat-card-<label>` /
-        `st-key-colored-metric-<label>`) so this substring selector reaches
-        every card on every page without touching unrelated bordered
-        containers (e.g. Value Finder's Filters panel, handled on its own
-        page). Streamlit's default is 15px all round; only the vertical
-        component is reduced here (~13% less), width/padding-inline stays. */
-        [class*="st-key-stat-card-"], [class*="st-key-colored-metric-"] {{
+        /* Bordered "card" containers — every stat_card() — keyed per-instance
+        (`st-key-stat-card-<label>`) so this substring selector reaches every
+        card on every page without touching unrelated bordered containers
+        (e.g. Value Finder's Filters panel, handled on its own page).
+        Streamlit's default is 15px all round; only the vertical component
+        is reduced here (~13% less), width/padding-inline stays. */
+        [class*="st-key-stat-card-"] {{
             padding-top: 13px !important;
             padding-bottom: 13px !important;
         }}
@@ -237,10 +323,10 @@ def render_header(active: str):
         .brand-subtitle {{
             font-size: 0.85rem;
             font-weight: 400;
-            color: rgba(255, 255, 255, 0.65);
+            color: var(--app-text-muted);
             white-space: nowrap;
             padding-left: 0.6rem;
-            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid var(--app-border);
         }}
         /* The nav zone's own content is plain sequential st.page_link calls
         (no nested columns — those turned out to size by percentage, not by
@@ -266,19 +352,49 @@ def render_header(active: str):
             font-weight: 400;
             padding: 0.4rem 0.5rem;
             line-height: 1.5;
+            transition: color 150ms ease;
+            /* Real <a> tags otherwise pick up the browser's own default
+            (unvisited-blue/visited-purple) link colour once a page has
+            actually been visited this session — visible here as a stray
+            blue/purple tint that has nothing to do with the design
+            system. Forcing the theme's own text colour keeps every
+            inactive tab neutral white regardless of visited state.
+            :link/:visited explicitly repeated (not just the bare
+            selector) because a browser's built-in :visited rule has
+            higher specificity than a plain element+attribute selector
+            and was winning the tie despite !important on the plain
+            selector alone. */
+            color: var(--app-text) !important;
         }}
-        /* Active nav item: underline only — no background tint, no colour
-        change, no weight change. Uses text-decoration (hugs the text
-        itself) rather than border-bottom, which would span the link's full
-        padded clickable box and look like a bracket around the whole tab
-        rather than a line under the word. Scoped to the nav zone (col 2)
-        only. The logo's own st.page_link also points at Home.py, so on the
-        Home page its href is the same empty string as the Home tab's — an
-        unscoped selector here was underlining the logo too. */
+        .st-key-topbar [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) [data-testid="stPageLink"] a:link,
+        .st-key-topbar [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) [data-testid="stPageLink"] a:visited {{
+            color: var(--app-text) !important;
+        }}
+        /* Inactive links pick up the accent on hover — active tab is
+        excluded (its href already matches active_href above, and this
+        selector's specificity is lower than that rule's) so the current
+        page's own link doesn't flicker between two accent treatments. */
+        .st-key-topbar [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) [data-testid="stPageLink"] a:hover {{
+            color: var(--app-accent-hover);
+        }}
+        /* Active nav item: accent-coloured text + underline, still no
+        background tint or weight change — one of the design system's
+        explicit "orange is reserved for" cases (active navigation state).
+        Uses text-decoration (hugs the text itself) rather than
+        border-bottom, which would span the link's full padded clickable
+        box and look like a bracket around the whole tab rather than a
+        line under the word. Scoped to the nav zone (col 2) only. The
+        logo's own st.page_link also points at Home.py, so on the Home
+        page its href is the same empty string as the Home tab's — an
+        unscoped selector here was colouring the logo too. */
         .st-key-topbar [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="stColumn"]:nth-child(2) [data-testid="stPageLink"] a[href="{active_href}"] {{
             background: transparent;
-            color: inherit;
-            font-weight: 400;
+            /* !important: the :link/:visited browser-default override
+            above also uses !important (needed to beat the UA stylesheet's
+            own :visited rule), which otherwise wins this tie regardless
+            of source order since importance is checked before order. */
+            color: var(--app-accent) !important;
+            font-weight: 500;
             text-decoration: underline;
             text-underline-offset: 4px;
         }}
@@ -476,27 +592,6 @@ def difference_style(value: float) -> str:
     return f"color: {color}; font-weight: 600;" if color else ""
 
 
-def colored_metric(label: str, value_text: str, color: str = ""):
-    """A st.metric look-alike whose value can be colour-overridden (st.metric
-    itself has no API for colouring the main value, only its delta line).
-    Used for Value Ratio cards so the colour matches value_ratio_color's
-    thresholds consistently with the coloured table cells elsewhere. Wrapped
-    in the same bordered container as stat_card for visual consistency."""
-    value_style = f"color: {color};" if color else ""
-    with st.container(border=True, key=_css_safe_key("colored-metric", label)):
-        st.markdown(
-            f"""
-            <div data-testid="stMetric">
-                <div style="font-size: 0.875rem; color: var(--app-text-muted, rgba(250, 250, 250, 0.6));">{label}</div>
-                <div style="font-size: 2.25rem; font-weight: 600; line-height: 1.2; {value_style}">
-                    {value_text}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
 def metrics_table_with_params(df, rename_map: dict, key: str):
     """Render a metrics table; if a `best_params` column is present, let the
     user select a row to view its full hyperparameters below the table.
@@ -507,13 +602,13 @@ def metrics_table_with_params(df, rename_map: dict, key: str):
     display_df = df[visible_columns].rename(columns=rename_map)
 
     if not has_params:
-        st.dataframe(display_df, hide_index=True, use_container_width=True)
+        st.dataframe(display_df, hide_index=True, width="stretch")
         return
 
     event = st.dataframe(
         display_df,
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         on_select="rerun",
         selection_mode="single-row",
         key=key,

@@ -23,16 +23,6 @@ def load_csv(path: Path) -> pd.DataFrame:
 
 
 @st.cache_resource(show_spinner=False)
-def load_model(position: str):
-    suffix = config.POSITION_FILE_SUFFIX[position]
-    path = config.MODELS_DIR / f"best_model_{suffix}.pkl"
-    try:
-        return joblib.load(path)
-    except Exception as e:  # noqa: BLE001
-        _fail(path, e)
-
-
-@st.cache_resource(show_spinner=False)
 def load_shap(position: str) -> dict:
     suffix = config.POSITION_FILE_SUFFIX[position]
     path = config.SHAP_DIR / f"shap_values_{suffix}.pkl"
@@ -74,6 +64,57 @@ def load_diagnostics_summary() -> pd.DataFrame:
     return load_csv(config.DIAGNOSTICS_SUMMARY_CSV)
 
 
+def load_comparable_players() -> pd.DataFrame:
+    return load_csv(config.COMPARABLE_PLAYERS_CSV)
+
+
+@st.cache_data(show_spinner=False)
+def get_league_shap_by_player(position: str) -> pd.DataFrame:
+    """Per-player league SHAP contribution (log-space) and its euro
+    counterfactual for one position, with Squad attached so a comparable-
+    player row (identified by Player+Squad, per comparable_players.csv) can
+    look up its own league contribution. per_player_bias.csv has no Squad
+    of its own and ~50 rows share a (Player, position) pair (mid-season
+    transfers), so Squad is joined back on via the same occurrence-index
+    pairing Bias Explorer's Individual Player Breakdown already uses for
+    the identical problem.
+
+    league_counterfactual_eur is read directly from per_player_bias.csv
+    (computed in notebooks/03_data_modelling.ipynb's aggregate_bias via
+    re-predicting each player with their league one-hot features zeroed
+    out, then back-transforming both predictions from log-space and
+    differencing in euro-space) — never derived here by exponentiating
+    league_shap_log directly, which would not equal the same figure."""
+    bias = load_per_player_bias()
+    bias = bias[bias["position"] == position]
+    bias = add_occurrence_index(bias, ["Player", "position"])
+
+    profile = load_predictions_with_profile()
+    profile = profile[profile["position"] == position]
+    profile = add_occurrence_index(profile, ["Player", "position"])
+
+    merged = bias.merge(
+        profile[["Player", "position", "_occurrence", "Squad"]],
+        on=["Player", "position", "_occurrence"],
+        how="left",
+    )
+    return merged[["Player", "Squad", "league", "league_shap_log", "league_counterfactual_eur"]]
+
+
+def add_occurrence_index(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
+    """Tags each row with its occurrence index within its own `group_cols`
+    group (e.g. (Player, position)) as a new `_occurrence` column, on a copy
+    of `df`. Lets duplicate-keyed rows — e.g. a player transferred mid-season
+    has two rows for the same position — be joined Nth-occurrence-to-Nth-
+    occurrence across two files that share no player ID, instead of
+    cross-joining and inflating the row count. Exact for the common
+    single-row case; a stable (if unverifiable) pairing for genuine
+    duplicates."""
+    df = df.copy()
+    df["_occurrence"] = df.groupby(group_cols).cumcount()
+    return df
+
+
 @st.cache_data(show_spinner=False)
 def load_predictions_with_profile() -> pd.DataFrame:
     """`dashboard/df_predictions.csv` joined with player profile columns
@@ -84,16 +125,13 @@ def load_predictions_with_profile() -> pd.DataFrame:
     at both Manchester City and Milan). Neither file carries a shared
     player ID, so a plain merge on (Player, position) would cross-join
     those pairs and inflate the row count. Instead each duplicate's
-    occurrence order within its own file is used as an extra join key,
-    pairing the Nth duplicate in one file with the Nth duplicate in the
-    other — exact for the ~98% of players with a single row, and a
-    stable (if unverifiable) pairing for the rest.
+    occurrence order within its own file is used as an extra join key
+    (see `add_occurrence_index`), pairing the Nth duplicate in one file
+    with the Nth duplicate in the other — exact for the ~98% of players
+    with a single row, and a stable (if unverifiable) pairing for the rest.
     """
-    predictions = load_dashboard_predictions().copy()
-    merged = load_merged_dataset().copy()
-
-    predictions["_occurrence"] = predictions.groupby(["Player", "position"]).cumcount()
-    merged["_occurrence"] = merged.groupby(["Player", "position_group"]).cumcount()
+    predictions = add_occurrence_index(load_dashboard_predictions(), ["Player", "position"])
+    merged = add_occurrence_index(load_merged_dataset(), ["Player", "position_group"])
 
     profile_columns = [
         "Player",
