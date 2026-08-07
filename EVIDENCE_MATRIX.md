@@ -7,7 +7,7 @@ Every significant dissertation-worthy claim mapped to the file, notebook section
 | 1 | The dataset contains 2,061 players | `data/processed/merged_dataset_2425.csv` (row count) | NB2 Step 17 (filter to valid target) | — |
 | 2 | Position breakdown is DEF 778 / MID 637 / FWD 487 / GK 159 | `merged_dataset_2425.csv` (`position_group` value counts) | NB2 Step 26 | — |
 | 3 | League breakdown is Serie A 459 / Premier League 423 / La Liga 421 / Bundesliga 384 / Ligue 1 374 | `merged_dataset_2425.csv` (`Comp` value counts) | NB2 Step 1 (source data) | — |
-| 4 | The valuation target uses a 30 June 2025 cutoff | `notebooks/02_data_cleaning_june2025.ipynb` source (Step 16 code cell) | NB2 Step 16 | `val_window`/`val_latest` construction |
+| 4 | The valuation target uses a 30 June 2025 cutoff | `notebooks/02_data_cleaning.ipynb` source (Step 16 code cell) | NB2 Step 16 | `val_window`/`val_latest` construction |
 | 5 | 96.99% of valuation dates fall within the 2024-25 season window (Aug 2024–Jun 2025) | `merged_dataset_2425.csv` (`date` column) | NB2 Step 16 | — |
 | 6 | The feature matrix `X` is identical between the December and June cutoffs on every column except `date`/`market_value_in_eur`/`log_market_value` | `df_{fwd,mid,def,gk}.csv` vs. `data/processed_december2025_reference/df_*.csv` | NB2 Step 29 (save) | `prepare_features()` (NB3 Step 2) |
 | 7 | Four algorithms are compared per position: Ridge, Random Forest, XGBoost, LightGBM | `results_summary.csv` (`algorithm` column, 4 rows per position) | NB3 Section 3 | `train_position()` |

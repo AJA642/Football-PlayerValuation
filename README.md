@@ -32,19 +32,20 @@ and nationality versus actual performance?
 ## Project Structure
 notebooks/
 ├── 01_data_collection.ipynb
-├── 02_data_cleaning_june2025.ipynb      ← canonical pipeline (live)
-├── 03_data_modelling_june2025.ipynb     ← canonical pipeline (live)
+├── 02_data_cleaning.ipynb                ← canonical pipeline (live), June 2025 cutoff
+├── 03_data_modelling.ipynb               ← canonical pipeline (live), June 2025 cutoff
 └── archive/
-    ├── 02_data_cleaning.ipynb           ← superseded, December 2025 cutoff — do not run
-    └── 03_data_modelling.ipynb          ← superseded, December 2025 cutoff — do not run
+    ├── 02_data_cleaning_archive.ipynb    ← superseded, December 2025 cutoff — do not run
+    └── 03_data_modelling_archive.ipynb   ← superseded, December 2025 cutoff — do not run
 
-The `_june2025`-suffixed notebooks are the live, canonical pipeline: they use
-a 30 June 2025 valuation cutoff, out-of-fold evaluation, scaled Ridge, and
-corrected SHAP documentation, and they are what produced everything in
-`data/processed/`. The notebooks under `archive/` are the original
-December-cutoff versions, kept only because they produced
-`data/processed_december2025_reference/`, preserved for comparison. Each
-archived notebook carries a warning cell explaining this; do not run them.
+`notebooks/02_data_cleaning.ipynb` and `notebooks/03_data_modelling.ipynb`
+are the live, canonical pipeline: they use a 30 June 2025 valuation cutoff,
+out-of-fold evaluation, scaled Ridge, and corrected SHAP documentation, and
+they are what produced everything in `data/processed/`. The `_archive`
+notebooks under `archive/` are the original December-cutoff versions, kept
+only because they produced `data/processed_december2025_reference/`,
+preserved for comparison. Each archived notebook carries a warning cell
+explaining this; do not run them.
 
 ## Status
 - [x] Data collection
