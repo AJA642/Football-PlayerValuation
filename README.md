@@ -14,10 +14,8 @@ performance statistics, and SHAP is used to quantify the contribution of
 league and nationality to each prediction.
 
 ## Research Questions
-1. Can position-specific ML models accurately predict football player market 
-values from performance statistics alone?
-2. How much of a player's market value is attributable to league affiliation 
-and nationality versus actual performance?
+1. Can position-specific machine learning models accurately estimate football player market values from player characteristics?
+2. How much of a player's market value is attributable to league affiliation and nationality versus actual performance?
 
 ## Data Sources
 - FBref (via Kaggle) — player performance statistics, 2024-25 season
