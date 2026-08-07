@@ -51,4 +51,4 @@ archived notebook carries a warning cell explaining this; do not run them.
 - [x] Data cleaning and merging
 - [x] Modelling
 - [x] Dashboard
-- [ ] Dissertation
+- [x] Dissertation
