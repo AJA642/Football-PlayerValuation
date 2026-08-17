@@ -1,6 +1,6 @@
 # Implementation Reference
 
-How the system currently works, end to end. Describes only what exists in the repository as of the live pipeline (`notebooks/01_data_collection.ipynb`, `notebooks/02_data_cleaning_june2025.ipynb`, `notebooks/03_data_modelling_june2025.ipynb`, `app/`). The archived December-cutoff notebooks (`notebooks/archive/`) and `data/processed_december2025_reference/` are historical reference material, not part of the live pipeline, and are not described here except where directly relevant.
+How the system currently works, end to end. Describes only what exists in the repository as of the live pipeline (`notebooks/01_data_collection.ipynb`, `notebooks/02_data_cleaning.ipynb`, `notebooks/03_data_modelling.ipynb`, `app/`). The archived December-cutoff notebooks (`notebooks/archive/`) and `data/processed_december2025_reference/` are historical reference material, not part of the live pipeline, and are not described here except where directly relevant.
 
 ---
 
@@ -21,7 +21,7 @@ How the system currently works, end to end. Describes only what exists in the re
 - Step 7: final inventory printout confirming all raw sources are present before notebook 2 runs.
 - Not cutoff-dependent — this notebook's outputs are identical regardless of the December/June cutoff choice, and it is not re-run as part of the June pipeline; its outputs in `data/raw/` and `data/external/` predate and are shared by both.
 
-## 3. Preprocessing & feature engineering — `notebooks/02_data_cleaning_june2025.ipynb`
+## 3. Preprocessing & feature engineering — `notebooks/02_data_cleaning.ipynb`
 
 29 steps, in order:
 
@@ -64,7 +64,7 @@ Notebook 2, Step 16:
 val_window = df_valuations[(df_valuations['date'] >= '2024-01-01') & (df_valuations['date'] <= '2025-06-30')].copy()
 val_latest = val_window.sort_values('date').groupby('player_id').tail(1)
 ```
-Each player's target is their **latest Transfermarkt valuation on or before 30 June 2025** (lower bound `2024-01-01` unchanged from the original design). This replaced an earlier version of the same line with an upper bound of `2025-12-31` (the December cutoff, preserved in `notebooks/archive/02_data_cleaning.ipynb` and `data/processed_december2025_reference/`).
+Each player's target is their **latest Transfermarkt valuation on or before 30 June 2025** (lower bound `2024-01-01` unchanged from the original design). This replaced an earlier version of the same line with an upper bound of `2025-12-31` (the December cutoff, preserved in `notebooks/archive/02_data_cleaning_archive.ipynb` and `data/processed_december2025_reference/`).
 
 Effect on the dataset: the player population and every non-target feature are **identical** between the December and June cutoffs (verified: 2,061 players, same position/league breakdown, byte-identical `X` on every column except `date`/`market_value_in_eur`/`log_market_value`) — only the target value itself changes. 96.99% of June-cutoff valuation dates fall within the nominal 2024-25 season window (Aug 2024–Jun 2025); 3.0% predate it.
 
@@ -164,13 +164,13 @@ No `requirements.txt` or `pyproject.toml` exists in the repository; the above re
 notebooks/01_data_collection.ipynb
   → data/raw/{fbref_kaggle,transfermarkt}/*.csv   (inputs to notebook 2; not cutoff-dependent)
 
-notebooks/02_data_cleaning_june2025.ipynb  (Steps 1–29)
+notebooks/02_data_cleaning.ipynb  (Steps 1–29)
   reads:  data/raw/fbref_kaggle/players_data-2024_2025.csv, players_data-2025_2026.csv
           data/raw/transfermarkt/player_valuations.csv, players.csv
   writes: merged_dataset_2425.csv, df_{fwd,mid,def,gk}.csv, df_ablation.csv
           → data/processed_june2025/ (staged) → promoted to data/processed/
 
-notebooks/03_data_modelling_june2025.ipynb
+notebooks/03_data_modelling.ipynb
   Step 1–3   reads df_{fwd,mid,def,gk}.csv, df_ablation.csv
              writes best_model_{fwd,mid,def,gk}.pkl (models/)
   Checkpoint writes results_summary.csv
