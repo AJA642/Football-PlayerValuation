@@ -40,10 +40,9 @@ METRIC_COLUMNS = {
 }
 
 st.header("Best Model per Position")
-# diagnostics_summary.csv has no algorithm column of its own — the winning
-# algorithm per position is selected from results_summary (max R²), the
-# same values already used to build the Home page's "Best Algorithm per
-# Position" card. No new metric is computed, just an existing-value lookup.
+# diagnostics_summary.csv has no algorithm column — the winner per position
+# is looked up from results_summary (max R²), the same values behind the
+# Home page's Best Algorithm card. No new metric computed here.
 best_algorithm_per_position = (
     results_summary.loc[results_summary.groupby("position")["R2"].idxmax()]
     .set_index("position")["algorithm"]
@@ -98,26 +97,19 @@ st.caption("Diagnostic plots and SHAP summaries are shown for the final selected
 st.markdown(
     """
     <style>
-    /* Diagnostics and SHAP Summary as two equal companion panels — same
-    bordered-card treatment used elsewhere (e.g. Player Explorer's Profile/
-    Valuation/Statistics row), so this page's card feels like the same
-    design system rather than a one-off. Both panels share identical
-    padding/border, so their top edges land at the same position by
-    construction (equal st.columns() width + equal card padding). */
+    /* Diagnostics/SHAP Summary as equal companion panels, matching the
+    bordered-card treatment used elsewhere (e.g. Player Explorer). Identical
+    padding/border on both means their top edges align by construction. */
     [class*="st-key-diag-panel-"], [class*="st-key-shap-panel-"] {
         padding-top: 16px !important;
         padding-bottom: 16px !important;
     }
-    /* Consistent gap between the three stacked diagnostic plots — sized
-    (measured, not guessed) so the Diagnostics card's total height lands
-    within a few px of the SHAP Summary card's at the 35/65 column split:
-    at 10px this card came out ~29px shorter than SHAP's (measured via
-    getBoundingClientRect on both cards), so +14.5px per gap (2 gaps)
-    closes that difference instead of leaving it as dead space below.
-    Compound selector (no space) — the key class and the stVerticalBlock
-    testid are on the same element here, not a parent/descendant pair (a
-    descendant-combinator version of this rule silently matched nothing
-    and left the gap at Streamlit's own default). */
+    /* Gap sized (measured, not guessed) so the Diagnostics card's total
+    height matches SHAP Summary's at the 35/65 split — at 10px this card
+    came out ~29px shorter, so +14.5px per gap (×2) closes the difference.
+    Compound selector (no space): key class and stVerticalBlock testid are
+    on the same element here, not parent/descendant — a descendant-combinator
+    version silently matched nothing and left the gap at Streamlit's default. */
     [class*="st-key-diag-panel-"][data-testid="stVerticalBlock"] {
         gap: 25px !important;
     }
@@ -128,14 +120,10 @@ st.markdown(
 tabs = st.tabs(config.POSITIONS)
 for position, tab in zip(config.POSITIONS, tabs):
     with tab:
-        # 35/65 rather than an even split — Diagnostics' three stacked plots
-        # are individually much narrower than a single wide chart, but the
-        # single SHAP summary plot needs real width to stay comfortably
-        # readable and to stop leaving empty space below it once it's no
-        # longer competing for a full half of the row. (30/70 was tried
-        # first and measured — it overcorrected, leaving SHAP taller than
-        # Diagnostics instead; 35/65 was derived from that measurement to
-        # balance both panels' image aspect ratios against each other.)
+        # 35/65, not even — Diagnostics' three stacked plots are narrow, but
+        # SHAP needs real width to stay readable. 30/70 was tried first and
+        # measured; it overcorrected, leaving SHAP taller than Diagnostics,
+        # so 35/65 was derived from that measurement to balance both panels.
         diag_col, shap_col = st.columns([35, 65])
         with diag_col:
             with st.container(border=True, key=f"diag-panel-{position}"):

@@ -37,14 +37,11 @@ st.title("Player Explorer")
 
 players = load_predictions_with_profile()
 
-# A cross-page handoff (e.g. clicking a row in Value Finder) must always
-# land on the intended player — regardless of whatever League/Club/Position
-# filters were left over from a previous visit to this page in the same
-# session. Reset them once per *new* handoff (tracked by player name so this
-# doesn't keep clobbering a filter the user deliberately set while just
-# browsing normally), before the filter widgets below are instantiated —
-# session_state for a widget's key can only be set before that widget is
-# created in the current run.
+# A cross-page handoff must land on the intended player regardless of
+# leftover filters from a previous visit. Reset once per *new* handoff
+# (tracked by player name, so a deliberate filter change isn't clobbered)
+# before the filter widgets are instantiated — session_state for a widget's
+# key can only be set before that widget is created in the current run.
 _incoming_player = st.session_state.get("selected_player")
 if _incoming_player and st.session_state.get("_last_handoff_player") != _incoming_player:
     st.session_state["league_filter"] = "All"
@@ -52,10 +49,9 @@ if _incoming_player and st.session_state.get("_last_handoff_player") != _incomin
     st.session_state["position_filter"] = "All"
     st.session_state["_last_handoff_player"] = _incoming_player
 
-# Primary navigation is League -> Club -> Player (how users actually think
-# about the dataset — "Barcelona players", "the Premier League" — rather
-# than starting from Position). Position stays available but only narrows
-# whatever League/Club has already selected; it doesn't drive which leagues
+# League -> Club -> Player navigation, matching how users think about the
+# dataset ("Barcelona players", "the Premier League") over starting from
+# Position. Position only narrows the pool; it never drives which leagues
 # or clubs are offered, and its own option list never changes.
 league_label_to_raw = {config.friendly_league_label(raw): raw for raw in players["Comp"].unique()}
 league_options = ["All"] + sorted(league_label_to_raw.keys())
@@ -81,8 +77,7 @@ with filter_cols[2]:
     )
 position_filter = st.session_state["position_filter"]
 
-# Single filtering pipeline — League, then Club, then Position — feeding the
-# Player search dropdown below. No filter is applied more than once and no
+# League -> Club -> Position feeds the Player search dropdown below; no
 # other section of the page re-derives this pool independently.
 pool = players
 if league_filter != "All":
@@ -106,9 +101,9 @@ if incoming_player:
             match = position_match
     if not match.empty:
         default_label = match.iloc[0]["_label"]
-# Only pre-select a player if we arrived via a cross-page handoff (e.g. from
-# Value Finder). Otherwise the search box should start blank rather than
-# defaulting to the first player alphabetically.
+# Only pre-select if we arrived via a cross-page handoff — otherwise the
+# search box starts blank rather than defaulting to the first player
+# alphabetically.
 default_index = labels.index(default_label) if default_label in labels else None
 
 with filter_cols[3]:
@@ -128,11 +123,10 @@ if not selected_label:
     st.caption("Search for a player above to get started.")
     st.stop()
 
-# Shrink the page title once a player is selected — the filters above it
-# stay the same size, but the title itself is pure chrome at this point
-# (the player's own name becomes the focal heading below), so freeing up
-# its vertical space lets more of the profile/valuation/stats row show
-# without scrolling. Left at full size on the blank, no-selection state.
+# Shrink the page title once a player is selected — it's pure chrome at
+# that point (the player's own name becomes the focal heading below), so
+# freeing its space lets more of the profile row show without scrolling.
+# Left full size on the blank, no-selection state.
 st.markdown(
     """
     <style>
@@ -149,29 +143,19 @@ squad = player_row["Squad"]
 full_record = get_player_full_record(player_name, position, squad)
 
 # --- Summary row: Player Profile | Market Valuation | Performance Stats --
-# Three columns rather than a two-column summary followed by a full-width
-# statistics section — this puts "who is this, what's it worth, how did
-# they play" side by side as one scannable row, with no page-length scroll
-# needed to reach the stats. Performance Statistics gets 2x the width of
-# the other two (it holds far more content: several categories of stats
-# vs. a handful of profile/valuation fields).
+# Three columns, not a two-column summary + full-width stats section — puts
+# "who is this, what's it worth, how did they play" in one scannable row
+# with no scroll to reach the stats. Performance Statistics gets 2x width
+# (several stat categories vs. a handful of profile/valuation fields).
 st.markdown(
     """
     <style>
-    /* Even more breathing room than the app-wide card default (13px) — all
-    three cards share the same padding now that Statistics is boxed too,
-    so the three columns read as one consistent, bordered set.
-    Equal column heights: st.columns() already stretches each stColumn
-    wrapper to match the tallest one (confirmed via measurement — all
-    three wrappers report the same height regardless of content), but each
-    card's own height defaults to its content size, leaving empty space
-    below the shorter cards instead of visibly filling the stretched
-    column. height: 100% makes each card fill that already-equal wrapper —
-    but only once the intermediate "stLayoutWrapper" div Streamlit inserts
-    between the card and the column is also told to stretch (it defaults
-    to auto/content-sized too, breaking the 100% chain otherwise); :has()
-    scopes that fix to just these three wrappers, not every stLayoutWrapper
-    on the page. */
+    /* Equal card heights: st.columns() stretches each column wrapper to
+    match the tallest, but a card's own height still defaults to its
+    content. height:100% only works once the intermediate "stLayoutWrapper"
+    div Streamlit inserts is also told to stretch — it defaults to
+    content-sized too, breaking the chain otherwise. :has() scopes this to
+    just these three wrappers, not every stLayoutWrapper on the page. */
     [data-testid="stLayoutWrapper"]:has(> .st-key-profile-summary-card),
     [data-testid="stLayoutWrapper"]:has(> .st-key-valuation-summary-card),
     [data-testid="stLayoutWrapper"]:has(> .st-key-perf-stats-col) {
@@ -183,25 +167,20 @@ st.markdown(
         height: 100% !important;
         box-sizing: border-box !important;
     }
-    /* Player Profile as a premium summary card, not a dense list: each
-    field below the name on its own line, no per-field caption label
-    (self-descriptive via the flag/crest/units already inline). Gap between
-    the name and the field rows widened to
-    22px. Compound selector (no space) — the key class and the
-    stVerticalBlock testid are on the same element here, not a
+    /* Premium summary card: each field on its own line, no per-field
+    caption label (self-descriptive via flag/crest/units inline). Gap
+    between name and field rows: 22px. Compound selector (no space) — key
+    class and stVerticalBlock testid land on the same element here, not a
     parent/descendant pair. */
     .st-key-profile-summary-card[data-testid="stVerticalBlock"] { gap: 22px !important; }
-    /* Market Valuation as a premium summary card, matching Player Profile's
-    added breathing room: heading -> hero figure -> Actual/Difference/Value
-    Ratio -> disclaimer caption all get even more room to separate, rather
-    than reading as one dense block. Compound selector (no space) for the
-    same reason as Player Profile's — the key class and stVerticalBlock
-    testid land on the same element. */
+    /* Matches Player Profile's card treatment: heading -> hero figure ->
+    Actual/Difference/Value Ratio -> disclaimer get more room to separate
+    rather than reading as one dense block. Compound selector, same reason
+    as Player Profile's. */
     .st-key-valuation-summary-card[data-testid="stVerticalBlock"] { gap: 26px !important; }
-    /* Hero figure for the valuation card: Model Estimated Value is the
-    single most important number on this page (the model's own output),
-    so it gets its own large line — Actual/Difference/Value Ratio follow
-    underneath as a compact label/value list, not four equal-weight cards. */
+    /* Model Estimated Value is the single most important number here, so
+    it gets its own large line; Actual/Difference/Value Ratio follow as a
+    compact list, not four equal-weight cards. */
     .valuation-hero-value {
         font-size: 2.25rem;
         font-weight: 600;
@@ -216,11 +195,10 @@ st.markdown(
         border-top: 1px solid var(--app-border, rgba(250, 250, 250, 0.15));
     }
     .valuation-row-label { color: var(--app-text-muted, rgba(250, 250, 250, 0.6)); }
-    /* Fixed-width label column so profile values line up into a vertical
-    column, unlike the space-between valuation rows. Built as a single
-    combined markdown block below (not one st.markdown call per field) so
-    the row list can't be split across separate Streamlit element wrappers
-    mid-render. */
+    /* Fixed-width label column so values line up vertically, unlike the
+    space-between valuation rows. Built as one combined markdown block (not
+    one st.markdown call per field) so the row list can't be split across
+    separate Streamlit element wrappers mid-render. */
     .profile-row {
         display: flex;
         gap: 0.75rem;
@@ -231,13 +209,10 @@ st.markdown(
         flex: 0 0 132px;
         color: var(--app-text-muted, rgba(250, 250, 250, 0.6));
     }
-    /* Performance Statistics as a compact label/value table instead of a
-    grid of bordered metric boxes — dense reference data (a dozen-plus
-    stats per player) reads faster as a scannable table than as tiles, and
-    it's what lets this column stay visually balanced with Player Profile/
-    Market Valuation at equal column width. Each row gets the same
-    right-aligned, subtle-separator treatment as the valuation card above,
-    for a consistent look across the whole row. */
+    /* Compact label/value table, not bordered metric boxes — a dozen-plus
+    stats per player reads faster as a table than as tiles, and keeps this
+    column balanced with Player Profile/Market Valuation at equal width.
+    Same right-aligned, subtle-separator treatment as the valuation card. */
     .st-key-perf-stats-col .stat-table-row {
         display: flex;
         justify-content: space-between;
@@ -252,33 +227,23 @@ st.markdown(
         text-align: right;
         white-space: nowrap;
     }
-    /* Tightened category-heading spacing so the table reads as one
-    continuous, scannable block rather than several separated mini-cards.
-    margin-bottom applies to every heading in this column, but margin-top
-    is scoped to .stat-category-heading only (not the plain h3 rule) —
-    applying it to every h3 here also pushed down the card-level "Statistics
-    (24-25 Season)" heading itself, 10px lower than "Player Profile"/"Market
-    Valuation"'s headings in the other two columns and breaking the
-    three-column top alignment. */
+    /* margin-bottom applies to every heading in this column, but margin-top
+    is scoped to .stat-category-heading only — applying it to every h3 here
+    also pushed the card-level "Statistics" heading down 10px, breaking the
+    three-column top alignment with Player Profile/Market Valuation. */
     .st-key-perf-stats-col [data-testid="stVerticalBlock"] { gap: 4px !important; }
     .st-key-perf-stats-col h3 { margin-bottom: 0px !important; }
-    /* Category headings (Shot Stopping, Distribution, Attacking, etc.) sized
-    down a step below the card-level "Performance Statistics (2024-25
-    Season)" heading, which stays at the same size as "Player Profile"/
-    "Market Valuation". Rendered as a plain <h3 class="stat-category-heading">
-    (not st.subheader()) specifically so this class can target them without
-    touching that first, card-level heading — each st.subheader/markdown
-    heading gets its own wrapper div, so a sibling-position selector
-    (:not(:first-of-type)) can't tell them apart; a dedicated class can. */
+    /* Category headings sized down a step below the card-level heading.
+    Rendered as plain <h3 class="stat-category-heading"> rather than
+    st.subheader() specifically so this class can target them alone — each
+    st.subheader/markdown heading gets its own wrapper div, so a
+    sibling-position selector can't tell them apart; a dedicated class can. */
     .stat-category-heading { font-size: 1.15rem !important; margin-top: 10px !important; }
-    /* All Statistics can run to 6 categories / ~35 rows — far more than
-    Model Features' 2 categories / 8-10 stats. Rather than let that grow
-    this card (and, via the equal-height row, Player Profile/Market
-    Valuation along with it), the stat rows scroll within a fixed-height
-    region instead. 480px was chosen by measuring Model Features' own
-    tallest case (FWD, 10 stats, renders at 466px) and adding headroom —
-    so Model Features itself never reaches the scrollbar, confirmed via
-    scrollHeight vs clientHeight, not assumed. */
+    /* All Statistics runs to ~35 rows vs. Model Features' 8-10 — scrolled
+    within a fixed height instead of growing this card (and, via the
+    equal-height row, Player Profile/Market Valuation with it). 480px
+    chosen by measuring Model Features' tallest case (FWD, 466px) plus
+    headroom, confirmed via scrollHeight vs clientHeight, not assumed. */
     .stat-scroll-area {
         max-height: 480px;
         overflow-y: auto;
@@ -366,9 +331,8 @@ with summary_cols[2]:
                 label_visibility="collapsed",
                 key="stats_view_toggle",
             )
-            # segmented_control returns None if the user clicks the already-
-            # selected option (deselecting it) — treated as staying on the
-            # default rather than showing neither view.
+            # segmented_control returns None if the user deselects the
+            # already-selected option — treated as staying on the default.
             if not stats_view:
                 stats_view = "Model Features"
 
@@ -380,11 +344,10 @@ with summary_cols[2]:
                     "These statistics were not necessarily used by the model."
                 )
 
-            # Fixed-height scroll region (not content-driven) so toggling to
-            # the much longer All Statistics view can never grow this card
-            # taller than Model Features already does — Profile/Valuation
-            # sit in the same equal-height row (see the height:100% rule
-            # above) and must stay unaffected by which view is selected.
+            # Fixed-height scroll (not content-driven) so All Statistics can
+            # never grow this card taller than Model Features — Profile/
+            # Valuation share the same equal-height row and must stay
+            # unaffected by which view is selected.
             stats_rows_html = []
             if stats_view == "Model Features":
                 for group_name, stats in config.POSITION_STAT_GROUPS[position]:
@@ -406,13 +369,12 @@ with summary_cols[2]:
                             f"</div>"
                         )
             else:
-                # All Statistics: every meaningful (non-null) stat across a
-                # fixed set of football categories, regardless of position or
-                # whether the model actually used that feature. A category is
-                # dropped entirely if every field in it is null for this
-                # player (e.g. Goalkeeping for an outfield player — verified
-                # those columns are 100% null for non-keepers, not just
-                # sparsely populated, so this never hides genuine data).
+                # All Statistics: every non-null stat across a fixed set of
+                # categories, regardless of position. A category is dropped
+                # if every field is null for this player (e.g. Goalkeeping
+                # for an outfield player — verified those columns are 100%
+                # null for non-keepers, not just sparse, so this never hides
+                # genuine data).
                 for group_name, stats in config.ALL_STATS_GROUPS:
                     group_rows = []
                     for field, label, format_type in stats:
@@ -443,12 +405,10 @@ with summary_cols[2]:
 st.divider()
 
 # --- Comparable Players ---------------------------------------------------
-# Reads the precomputed nearest-neighbour artifact (notebooks/
-# 03_data_modelling.ipynb, Section 9) rather than computing similarity
-# here — the neighbour search itself is unbiased and unchanged by this
-# page; only which neighbour feeds the interpretive sentence below is
-# selected here, and only for that sentence, never for the table (the
-# table always shows all 5 real nearest neighbours regardless of league).
+# Reads the precomputed nearest-neighbour artifact (notebook 3, Section 9)
+# rather than computing similarity here — the search itself is unbiased;
+# only which neighbour feeds the interpretive sentence below is selected,
+# never the table (which always shows all 5 real nearest neighbours).
 st.header("Comparable Players")
 st.markdown(
     """
@@ -494,9 +454,8 @@ with comparable_players_section:
         league_shap_by_player = get_league_shap_by_player(position)
 
         def _neighbor_details(neighbor_id: str):
-            # comparable_players.csv builds player_id as "{Player} — {Squad}"
-            # (em dash) — Squad names never contain that exact separator, so a
-            # single split is unambiguous.
+            # player_id is "{Player} — {Squad}" (em dash) — Squad names never
+            # contain that exact separator, so a single split is unambiguous.
             n_name, n_squad = neighbor_id.split(" — ", 1)
             profile_match = players[
                 (players["position"] == position) & (players["Player"] == n_name) & (players["Squad"] == n_squad)
@@ -524,9 +483,8 @@ with comparable_players_section:
             if details is not None:
                 ranked_neighbors.append((rank, details))
 
-        # Selected player's own league/SHAP figures — needed by both the detail
-        # panel below and the cross-league sentence further down, so computed
-        # once here rather than twice.
+        # Needed by both the detail panel below and the cross-league sentence
+        # further down, so computed once here rather than twice.
         selected_league_raw = player_row["Comp"]
         selected_bias_match = league_shap_by_player[
             (league_shap_by_player["Player"] == player_name) & (league_shap_by_player["Squad"] == squad)
@@ -548,14 +506,11 @@ with comparable_players_section:
             ]
         )
 
-        # Note: st.dataframe's own row height (~35px, glide-data-grid
-        # canvas-rendered) isn't reachable via CSS or a public per-row
-        # height option in this Streamlit version — a shorter `height=`
-        # here would only add a scrollbar over the same fixed row size,
-        # not shrink the rows, so it's left at its default. The vertical
-        # win in this section comes from the tightened gaps around the
-        # table (see .st-key-comparable-players-section above) and the
-        # comparison panel's own tighter row padding below.
+        # st.dataframe's row height (~35px, glide-data-grid canvas-rendered)
+        # isn't reachable via CSS or a per-row height option in this
+        # Streamlit version — a shorter height= would just add a scrollbar,
+        # not shrink rows, so it's left default. Vertical savings come from
+        # the tightened gaps around the table and the comparison panel below.
         st.dataframe(
             comp_table,
             hide_index=True,
@@ -566,9 +521,8 @@ with comparable_players_section:
         )
 
         # --- Detail panel: pick one of the 5 neighbours to compare in full ---
-        # Keyed per selected-player so switching players resets any stale
-        # comparison choice from a previous player's neighbour list, rather
-        # than silently carrying an unrelated selection over.
+        # Keyed per selected-player so switching players resets a stale
+        # comparison choice rather than silently carrying it over.
         neighbor_options = [f"{details['name']} — {details['squad']}" for _, details in ranked_neighbors]
         chosen_label = st.selectbox(
             "Compare with",
@@ -662,11 +616,9 @@ with comparable_players_section:
                 f"{_league_effect_cell(selected_league_counterfactual_eur, selected_league_shap_log)}"
                 f"{_league_effect_cell(comparable_league_counterfactual_eur, comparable_league_shap_log)}"
                 "</div>",
-                # Explanatory note sits directly beneath the League Effect row,
-                # ahead of the causality disclaimer at the bottom of the panel
-                # — this one clarifies why the euro figure isn't a simple
-                # function of the log-space value alone, not whether the
-                # effect is causal (that's the separate st.caption below).
+                # Clarifies why the euro figure isn't a simple function of
+                # the log-space value alone — not a causality disclaimer
+                # (that's the separate st.caption further below).
                 '<div class="compare-note">League Effect is shown in both euro and log-space terms. '
                 "The euro-denominated contribution depends on each player's overall model estimate, "
                 "so players in the same league may still display different euro contributions even "
@@ -710,13 +662,11 @@ with comparable_players_section:
             st.markdown(
                 """
                 <style>
-                /* Comparison detail panel: same label/value row rhythm as the
-                Performance Statistics table above (border-top separators,
-                muted labels, tabular-nums values) rather than a nested card —
-                a plain 3-column grid reads as one continuous panel instead of
-                a table-within-a-table. Row padding tightened (was 0.5rem) so
-                the panel reads as compact rather than airy, matching the
-                rest of this section. */
+                /* Same label/value row rhythm as Performance Statistics above
+                (border-top separators, muted labels, tabular-nums) rather
+                than a nested card — a plain 3-column grid reads as one panel
+                instead of a table-within-a-table. Row padding tightened
+                (was 0.5rem) to match the rest of this section. */
                 .compare-row {
                     display: grid;
                     grid-template-columns: 1.2fr 1fr 1fr;
@@ -744,8 +694,8 @@ with comparable_players_section:
                     color: var(--app-text-muted, rgba(250, 250, 250, 0.55));
                     margin-top: 0.1rem;
                 }
-                /* League Effect explanatory note — no border/label columns,
-                just a short muted line spanning the panel's own width. */
+                /* No border/label columns — a short muted line spanning the
+                panel's own width. */
                 .compare-note {
                     font-size: 0.75rem;
                     line-height: 1.45;
@@ -762,11 +712,9 @@ with comparable_players_section:
                 "accounting for observed player performance. It should not be interpreted as a causal effect."
             )
 
-        # Interpretive sentence: first cross-league neighbour in rank order
-        # (neighbor_1 checked first, since ranked_neighbors preserves rank
-        # order), or omitted entirely if all 5 share the selected player's
-        # league. This selection only decides which neighbour's numbers appear
-        # in the sentence — it has no effect on the table above.
+        # First cross-league neighbour in rank order, or omitted if all 5
+        # share the selected player's league. Only affects which neighbour's
+        # numbers appear in this sentence — no effect on the table above.
         cross_league_neighbor = next(
             (details for _, details in ranked_neighbors if details["league_raw"] != selected_league_raw),
             None,
@@ -827,11 +775,9 @@ else:
 st.divider()
 
 # --- Why did the model estimate this value? -----------------------------
-# Waterfall (left) and Top Positive/Negative Contributors (right, stacked)
-# merged into one two-column row rather than two stacked full-width
-# sections — they're explaining the same SHAP breakdown from two angles
-# (visual + tabular), so reading them side by side needs less scrolling
-# and reads as one analysis instead of two separate ones.
+# Waterfall (left) and Top Positive/Negative Contributors (right) merged
+# into one row rather than stacked full-width — same SHAP breakdown from
+# two angles, so reading them side by side needs less scrolling.
 st.header("Why did the model estimate this value?")
 st.write(
     "SHAP values show how each feature increased (red) or decreased (blue) the "
@@ -859,13 +805,11 @@ top_negative = contributions.tail(5).sort_values()
 st.markdown(
     """
     <style>
-    /* The contributor tables (stacked) are much shorter than the tall
-    waterfall figure beside them — center them vertically in the row
-    instead of leaving all the leftover space stranded below them. */
+    /* Contributor tables are much shorter than the waterfall beside them —
+    center them vertically instead of leaving space stranded below. */
     .st-key-shap-row [data-testid="stHorizontalBlock"] { align-items: center; }
-    /* Tight, consistent gap between the two stacked tables (and between
-    each table and its label above it) so the pair reads as one panel
-    rather than two loosely related blocks. */
+    /* Tight gap between the two stacked tables (and each table and its
+    label) so the pair reads as one panel, not two loose blocks. */
     .st-key-shap-row [data-testid="stVerticalBlock"] { gap: 6px !important; }
     </style>
     """,
@@ -873,20 +817,17 @@ st.markdown(
 )
 
 with st.container(key="shap-row"):
-    # 55/45 — widened from the prior 50/50 per feedback that the
-    # contributor column felt cramped, while keeping the waterfall as the
-    # dominant element rather than an even split.
+    # 55/45, widened from 50/50 per feedback that the contributor column
+    # felt cramped, while keeping the waterfall the dominant element.
     waterfall_col, contrib_col = st.columns([55, 45])
     with waterfall_col:
         with st.spinner("Loading SHAP explanation…"):
             fig = plt.figure()
             shap.plots.waterfall(explanation, max_display=15, show=False)
             st.pyplot(fig, clear_figure=True)
-        # No caption here any more — it only restated what the paragraph
-        # above the two columns already says (this chart is the SHAP-based
-        # explanation), and unlike the SHAP_EUR_CAVEAT's other uses
-        # elsewhere (e.g. league/confederation contribution cards), no EUR
-        # figure appears on this chart for the caveat to actually qualify.
+        # No caption here — it only restated the paragraph above, and unlike
+        # SHAP_EUR_CAVEAT's other uses (league/confederation cards), no EUR
+        # figure appears on this chart for the caveat to qualify.
     with contrib_col:
         st.markdown("**Top Positive Contributors**")
         st.dataframe(top_positive.rename("SHAP value (log-space)").to_frame(), width="stretch")

@@ -15,11 +15,9 @@ st.set_page_config(
 render_header(active="Value Finder")
 balance_section_spacing()
 
-# This filter panel is a compact control surface, not prose — tighter than
-# the standard bordered-card padding (components.py already trims that
-# globally) and tighter than the standard inter-section divider gap, since
-# neither of those defaults were tuned with a dense, all-controls panel
-# like this one in mind.
+# Filter panel is a compact control surface, not prose — tighter than the
+# standard card padding and divider gap, neither tuned for a dense,
+# all-controls panel like this one.
 st.markdown(
     """
     <style>
@@ -50,13 +48,10 @@ players = load_predictions_with_profile()
 
 with st.container(border=True, key="vf-filters-panel"):
     st.subheader("Filters")
-    # Same League -> Club -> Position ordering/hierarchy as Player Explorer.
-    # These are multiselects (not Player Explorer's single "All"-or-one
-    # selectbox), so the cascade works slightly differently: Club's option
-    # list is scoped to whichever League(s) are currently selected, and any
-    # already-picked club that falls outside a newly-narrowed League
-    # selection is dropped from the selection instead of the whole field
-    # resetting to a single default.
+    # Same League -> Club -> Position hierarchy as Player Explorer, but as
+    # multiselects: Club's options are scoped to the selected League(s), and
+    # any already-picked club outside a newly-narrowed League selection is
+    # dropped from the selection rather than resetting the whole field.
     filter_row1 = st.columns(3)
     with filter_row1[0]:
         league_label_to_raw = {
@@ -101,10 +96,9 @@ with st.container(border=True, key="vf-filters-panel"):
             value=0,
         )
     with filter_row2[3]:
-        # A compact control surface, not prose — this sits in the same row
-        # as the sliders rather than on its own line. st.slider's own label
-        # sits above the track, so a leading spacer of the same height lines
-        # the checkbox up with the sliders' tracks instead of their labels.
+        # Sits in the slider row rather than its own line. st.slider's label
+        # sits above the track, so a spacer of that height lines the
+        # checkbox up with the tracks, not the labels.
         st.markdown("<div style='height: 2.75rem'></div>", unsafe_allow_html=True)
         show_undervalued_only = st.checkbox("Show undervalued players only", value=False)
 
@@ -125,9 +119,8 @@ filtered = filtered[filtered["Min_playing_time"] >= minutes_min]
 if show_undervalued_only:
     filtered = filtered[filtered["undervalued_flag"]]
 
-# No explicit ordering existed before — players with the largest
-# model-vs-actual discrepancy (in either direction) are the whole point of
-# this page, so that's the default sort rather than incidental CSV row order.
+# Sorted by largest model-vs-actual discrepancy (either direction) — that's
+# the whole point of this page, not incidental CSV row order.
 filtered = filtered.sort_values("value_ratio", ascending=False).reset_index(drop=True)
 
 st.caption(

@@ -32,12 +32,9 @@ st.write(
 league_summary = load_bias_summary_league()
 confed_summary = load_bias_summary_confederation()
 
-# The Position filter sits inline with the "League Bias" heading (left
-# heading, right dropdown, one row) rather than in its own bordered box with
-# a divider before the chart — it's the only control on the page, so a
-# separate panel for it was more chrome than the control needed. It's
-# rendered once, up front, because its value also drives the Confederation
-# Bias chart further down the page.
+# Position filter sits inline with the League Bias heading rather than its
+# own bordered panel — it's the only control on the page. Rendered once, up
+# front, since its value also drives the Confederation Bias chart below.
 header_col, filter_col = st.columns([4, 1])
 with header_col:
     st.header("League Bias")
@@ -63,9 +60,9 @@ confed_view["confederation_label"] = confed_view["confederation"]
 
 def render_bias_chart(df, category_col, category_label_col, key):
     df = df.copy()
-    # Sample size moves into the hover tooltip only (not always-visible bar
-    # labels) — with "All" positions selected, four grouped bars per league
-    # each carrying their own text label overlapped and became unreadable.
+    # Sample size in hover only, not bar labels — with "All" positions,
+    # four grouped bars per league each carrying a label overlapped and
+    # became unreadable.
     df["sample_note"] = df["n_players"].apply(
         lambda n: f"n={n} (small sample)" if n < SMALL_SAMPLE_THRESHOLD else f"n={n}"
     )
@@ -102,9 +99,8 @@ def render_bias_chart(df, category_col, category_label_col, key):
         yaxis_title="",
         legend_title_text="Position",
         margin=dict(l=0, r=0, t=10, b=0),
-        # Capped as well as floored — with "All" positions grouping 4 bars
-        # per category, this scaled unbounded for large category counts;
-        # readability doesn't need more than ~450px even then.
+        # Capped as well as floored — "All" positions grouping 4 bars/
+        # category scaled unbounded for large counts; ~450px is enough.
         height=min(450, max(280, 45 * df[category_label_col].nunique())),
     )
     st.plotly_chart(fig, width="stretch", key=key)
@@ -204,10 +200,9 @@ with breakdown_cols[1]:
     )
 with breakdown_cols[2]:
     # Confederation contributions are an order of magnitude smaller than
-    # league ones (see the Insight box below) — many genuinely nonzero
-    # values (e.g. 0.00027) round to "0.000" at 3dp and read as no effect
-    # at all. One extra decimal place keeps them visible without changing
-    # the euro figure, which was already computed from the unrounded value.
+    # league ones — many nonzero values (e.g. 0.00027) round to "0.000" at
+    # 3dp. One extra decimal keeps them visible; the euro figure is already
+    # computed from the unrounded value, unaffected by this display choice.
     stat_card("Confederation Contribution (log-space)", f"{player_row['confed_shap_log']:.4f}")
 with breakdown_cols[3]:
     stat_card(
