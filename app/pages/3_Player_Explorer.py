@@ -142,6 +142,20 @@ position = player_row["position"]
 squad = player_row["Squad"]
 full_record = get_player_full_record(player_name, position, squad)
 
+# Same source as the Comparable Players detail panel's League Effect cell
+# further down this page — league_counterfactual_eur from per_player_bias.csv,
+# looked up once here so the Market Valuation card's row and the Comparable
+# Players section always show an identical figure for this player.
+_league_bias_for_player = get_league_shap_by_player(position)
+_player_league_bias_match = _league_bias_for_player[
+    (_league_bias_for_player["Player"] == player_name) & (_league_bias_for_player["Squad"] == squad)
+]
+player_league_counterfactual_eur = (
+    _player_league_bias_match.iloc[0]["league_counterfactual_eur"]
+    if not _player_league_bias_match.empty
+    else None
+)
+
 # --- Summary row: Player Profile | Market Valuation | Performance Stats --
 # Three columns, not a two-column summary + full-width stats section — puts
 # "who is this, what's it worth, how did they play" in one scannable row
@@ -294,6 +308,12 @@ with summary_cols[1]:
         diff_color = difference_color(diff)
         ratio_color = value_ratio_color(ratio)
 
+        league_label = config.friendly_league_label(player_row["Comp"])
+        if player_league_counterfactual_eur is None or pd.isna(player_league_counterfactual_eur):
+            league_effect_display = "—"
+        else:
+            league_effect_display = f"€{player_league_counterfactual_eur:+,.0f}"
+
         st.markdown(
             f"""
             <div class="valuation-row-label">{config.MODEL_ESTIMATED_VALUE_LABEL}</div>
@@ -310,12 +330,20 @@ with summary_cols[1]:
                 <span class="valuation-row-label">Value Ratio</span>
                 <span style="color:{ratio_color or 'inherit'};">{ratio:.2f}</span>
             </div>
+            <div class="valuation-row">
+                <span class="valuation-row-label">League Effect ({league_label})</span>
+                <span>{league_effect_display}</span>
+            </div>
             """,
             unsafe_allow_html=True,
         )
         st.caption(
             "The model estimates this player's market value based on their observed "
             "2024–25 characteristics. It is not a prediction of future value."
+        )
+        st.caption(
+            "League Effect reflects the model-attributed contribution of league affiliation after "
+            "accounting for observed player performance. It should not be interpreted as a causal effect."
         )
 
 with summary_cols[2]:
