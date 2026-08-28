@@ -500,6 +500,7 @@ with comparable_players_section:
                 "squad": n_squad,
                 "league_raw": profile_row["Comp"],
                 "actual_value_eur": profile_row["actual_value_eur"],
+                "predicted_value_eur": profile_row["predicted_value_eur"],
                 "league_shap_log": league_shap_log,
             }
 
@@ -638,6 +639,11 @@ with comparable_players_section:
                 '<span class="compare-metric-label">Actual Value</span>'
                 f'<span class="compare-value">€{player_row["actual_value_eur"]:,.0f}</span>'
                 f'<span class="compare-value">€{chosen_details["actual_value_eur"]:,.0f}</span>'
+                "</div>",
+                '<div class="compare-row">'
+                '<span class="compare-metric-label">Model Estimated Value</span>'
+                f'<span class="compare-value">€{player_row["predicted_value_eur"]:,.0f}</span>'
+                f'<span class="compare-value">€{chosen_details["predicted_value_eur"]:,.0f}</span>'
                 "</div>",
                 '<div class="compare-row">'
                 '<span class="compare-metric-label">League Effect</span>'
