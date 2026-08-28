@@ -9,30 +9,7 @@ from lib import config
 
 
 def _fix_dropdown_chevron_toggle():
-    """Makes every selectbox/multiselect chevron a true open/close toggle.
-
-    Investigated first, live, before writing anything: clicking the (now
-    correctly rotated) chevron while open does fire BaseWeb's own close
-    logic — `aria-expanded` on the combobox `<input>` does flip to "false"
-    at click time — but the same click's mousedown also refocuses that
-    input, and BaseWeb reopens the menu on focus. Net effect: the click
-    closes and reopens within the same interaction, which reads as "nothing
-    happened." This is a BaseWeb focus/click race, not something our own
-    CSS or a page's widget code is causing — confirmed by reproducing it
-    with a plain click and no custom JS at all.
-
-    `aria-expanded` is a genuine, stable ARIA attribute (not an
-    emotion-hash class), so it's used here too: a single document-level
-    mousedown listener, capture phase (fires before BaseWeb's own delegated
-    handlers get a chance to run), that only acts when the click lands on
-    a dropdown's own chevron *and* that dropdown is currently open. In that
-    one case it stops the event outright and blurs the input directly,
-    bypassing the focus-reopen race entirely. A click on a closed dropdown,
-    or anywhere else on the page (including the options list, which BaseWeb
-    renders in a portal outside the `[data-baseweb="select"]` subtree so it
-    never matches this selector), is untouched and behaves exactly as
-    before. Idempotent (guarded so a rerun never attaches a second copy).
-    """
+    """Makes every selectbox/multiselect chevron a true open/close toggle."""
     components.html(
         """
         <script>
@@ -60,25 +37,6 @@ def _fix_dropdown_chevron_toggle():
 
 
 def render_header(active: str):
-    """The app's only header and only navigation surface: one single-row top
-    bar with logo (left), page tabs (centre), and an empty spacer zone
-    (right). The spacer has no content — it exists purely so the centre zone
-    is genuinely centred on the full row: zone 1 and zone 3 are forced to
-    equal width (`flex: 1 1 0` on both), so whatever space the centre zone's
-    own content doesn't need is split evenly on either side, regardless of
-    how wide the logo is. Replaces Streamlit's native header/toolbar
-    entirely rather than sitting below it.
-
-    Every nav item — including the active one — is rendered as a real
-    st.page_link with identical structure, so padding/height/line-height/
-    border-radius are guaranteed identical by construction. The active item
-    is picked out purely via an href attribute selector that only changes
-    font weight, never layout or colour — a bold-text state instead of a
-    tinted-background "pill", per user preference.
-
-    The sidebar itself is never created server-side (see
-    .streamlit/config.toml's showSidebarNavigation=false) — nothing here
-    hides it after the fact."""
     active_href = "" if active == "Home" else active.replace(" ", "_")
     st.markdown(
         f"""
@@ -404,10 +362,6 @@ def render_header(active: str):
     )
 
     with st.container(key="topbar"):
-        # zone_cols[2] is intentionally left empty — a pure symmetry spacer
-        # so zone_cols[1] centres on the full row (see the CSS above). The
-        # ratio passed to st.columns() here is moot; the CSS's `!important`
-        # flex rules are what actually size all three zones.
         zone_cols = st.columns([1, 6, 1])
         with zone_cols[0]:
             st.page_link(config.HOME_PAGE["path"], label=config.DASHBOARD_TITLE)
@@ -425,11 +379,6 @@ def render_header(active: str):
 
 
 def balance_section_spacing():
-    """Breathing room around section dividers so a page with several stacked
-    sections (e.g. Player Explorer) doesn't run sections together, without
-    altering section order or content. 1.1rem — down from an earlier 1.75rem
-    that, combined with the page-wide gap in render_header(), read as too
-    loose for a dashboard that's meant to feel dense."""
     st.markdown(
         """
         <style>
@@ -443,13 +392,6 @@ def balance_section_spacing():
 
 
 def wide_divider(key: str):
-    """A divider deliberately exempt from balance_section_spacing()'s global
-    margin — for the rare case where a specific divider is separating two
-    genuinely distinct ideas (e.g. Model Performance's summary-vs-detail
-    split between "Best Model per Position" and "Full Results") and earns
-    more visual weight than the standard inter-section gap. Needs its own
-    keyed container: `[data-testid="stMainBlockContainer"] hr` alone can't
-    be overridden per-instance, only page-wide."""
     with st.container(key=key):
         st.divider()
     st.markdown(
@@ -465,13 +407,6 @@ def wide_divider(key: str):
 
 
 def _css_safe_key(prefix: str, label: str) -> str:
-    """A container `key` that's both a valid Streamlit key and, via
-    Streamlit's own `st-key-<key>` class convention, targetable by a CSS
-    substring selector — e.g. `[class*="st-key-stat-card-"]` reaches every
-    stat_card() on a page regardless of its label, without relying on
-    Streamlit's unstable emotion-hash classes (there is no other stable hook:
-    a bordered st.container() and a plain one share the exact same
-    data-testid, differing only in an internal emotion class)."""
     safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", label).strip("-")
     return f"{prefix}-{safe}"
 
@@ -482,10 +417,6 @@ def stat_card(label: str, value: str, help_text: str | None = None):
 
 
 def format_eur_short(value: float) -> str:
-    """Compact euro formatting for chart axes/tooltips (€1.2M, €35M, €900K),
-    distinct from the full comma-formatted euros used in metric cards
-    elsewhere (e.g. "€17,960,778") — a value-history chart with many points
-    needs shorter labels than a single-value stat card does."""
     if value >= 1_000_000:
         return f"€{value / 1_000_000:.1f}M".replace(".0M", "M")
     if value >= 1_000:
@@ -498,20 +429,6 @@ _TAG_BASE = 0xE0000  # Unicode tag-character block, used only for the
 
 
 def flag_emoji(country_name: str) -> str:
-    """Unicode flag for a nationality (e.g. "France" -> "🇫🇷"), or "" if
-    the country isn't in config.COUNTRY_FLAG_CODES — callers should just
-    display the plain name in that case, the same graceful-fallback
-    behaviour as a missing club logo.
-
-    Two encodings, both real Unicode mechanisms (no image assets):
-    - Ordinary ISO 3166-1 alpha-2 codes ("FR") become a pair of Regional
-      Indicator Symbols (U+1F1E6-based), the standard flag-emoji encoding.
-    - The three UK home nations aren't alpha-2 codes at all
-      (COUNTRY_FLAG_CODES stores "GB-ENG" etc. for them) — they render via
-      the separate "tag sequence" mechanism: the black-flag base character
-      followed by invisible tag characters spelling the region code, which
-      is how 🏴󠁧󠁢󠁥󠁮󠁧󠁿 (England) etc. are actually defined.
-    """
     code = config.COUNTRY_FLAG_CODES.get(country_name)
     if not code:
         return ""
@@ -523,12 +440,6 @@ def flag_emoji(country_name: str) -> str:
 
 
 def logo_prefixed_heading(logo_data_uri: str | None, text: str) -> str:
-    """Markdown-heading-compatible HTML: a small inline crest immediately
-    before `text`, sized and vertically aligned to sit on the same line as
-    the surrounding "####"-style profile values — or, if no logo is
-    available, just `text` unchanged so the caller's existing rendering
-    (`st.markdown(f"#### {...}")`) doesn't need a separate no-logo code
-    path. Callers must still pass unsafe_allow_html=True."""
     if not logo_data_uri:
         return text
     return (
@@ -537,22 +448,11 @@ def logo_prefixed_heading(logo_data_uri: str | None, text: str) -> str:
         f"{text}"
     )
 
-
 VALUE_RATIO_GREEN = "#22c55e"
 VALUE_RATIO_RED = "#ef4444"
 
 
 def value_ratio_color(value: float) -> str:
-    """Consistent Value Ratio colour threshold, shared across every page
-    that shows a Value Ratio: >1.10 green (model estimate well above actual
-    value), <0.90 red (well below), otherwise the theme's neutral text
-    colour (no override).
-
-    The value is rounded to 2 decimal places *before* the threshold check,
-    matching the 2-decimal precision every page actually displays (e.g.
-    f"{ratio:.2f}"). Thresholding the raw float instead would let a value
-    like 0.898039 — which displays as "0.90" — read as red, contradicting
-    a number that looks like it's sitting right on the boundary."""
     if value is None or (isinstance(value, float) and value != value):  # NaN check without pandas
         return ""
     rounded = round(value, 2)
@@ -564,18 +464,11 @@ def value_ratio_color(value: float) -> str:
 
 
 def value_ratio_style(value: float) -> str:
-    """CSS declaration string for a pandas Styler.map cell, using the same
-    thresholds as value_ratio_color."""
     color = value_ratio_color(value)
     return f"color: {color}; font-weight: 600;" if color else ""
 
 
 def difference_color(value: float) -> str:
-    """Sign-based colour for a currency delta (e.g. Value Finder's
-    Difference column) — the same green/red palette as Value Ratio, but
-    keyed on sign alone rather than reusing the ratio's >1.10/<0.90
-    magnitude thresholds, since a euro delta isn't the same kind of number
-    as a ratio."""
     if value is None or (isinstance(value, float) and value != value):
         return ""
     if value > 0:
@@ -586,17 +479,11 @@ def difference_color(value: float) -> str:
 
 
 def difference_style(value: float) -> str:
-    """CSS declaration string for a pandas Styler.map cell, using the same
-    thresholds as difference_color."""
     color = difference_color(value)
     return f"color: {color}; font-weight: 600;" if color else ""
 
 
 def metrics_table_with_params(df, rename_map: dict, key: str):
-    """Render a metrics table; if a `best_params` column is present, let the
-    user select a row to view its full hyperparameters below the table.
-    The raw hyperparameter string is never shown inline in the grid —
-    only in the detail panel below, once a row is selected."""
     has_params = "best_params" in df.columns
     visible_columns = [c for c in df.columns if c != "best_params"]
     display_df = df[visible_columns].rename(columns=rename_map)
