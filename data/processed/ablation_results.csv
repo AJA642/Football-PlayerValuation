@@ -1,0 +1,5 @@
+position,algorithm,RMSE_log,MAE_log,R2,MAPE_eur_pct,best_params
+ALL_ABLATION,Ridge,0.8756202210820405,0.6831063626153197,0.5249318460924041,105.01186518489905,{'ridge__alpha': 20.0}
+ALL_ABLATION,RandomForest,0.8660723612409716,0.6780924194866004,0.5352357521657518,94.78871222027658,"{'n_estimators': 500, 'min_samples_leaf': 4, 'max_features': 0.8, 'max_depth': 8}"
+ALL_ABLATION,XGBoost,0.8509207528339172,0.6659852646393766,0.5513552550667571,96.0152903950232,"{'subsample': 0.8, 'n_estimators': 300, 'max_depth': 3, 'learning_rate': 0.03, 'colsample_bytree': 0.8}"
+ALL_ABLATION,LightGBM,0.8524388622234795,0.6652813923302668,0.5497529922045654,93.58489872173726,"{'subsample': 0.6, 'num_leaves': 15, 'n_estimators': 500, 'learning_rate': 0.01, 'colsample_bytree': 0.8}"
